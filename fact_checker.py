@@ -1,13 +1,12 @@
 """
-fact_checker.py — Fact-checking logic using the Claude Code CLI.
-
-Uses `claude -p` (Claude Code subscription) instead of the Anthropic SDK,
-so no API key is required.
+fact_checker.py — Fact-checking logic using the Anthropic Python SDK.
 """
 
-import subprocess
+import anthropic
 
 from personas import FACT_CHECKER_SYSTEM_PROMPT
+
+_client = anthropic.Anthropic()
 
 
 def fact_check(op_ed_text: str, persona_name: str) -> dict:
@@ -28,17 +27,15 @@ def fact_check(op_ed_text: str, persona_name: str) -> dict:
     user_message = (
         f"Please fact-check the following op-ed by {persona_name}:\n\n{op_ed_text}"
     )
-    combined_prompt = f"{FACT_CHECKER_SYSTEM_PROMPT}\n\n{user_message}"
 
     try:
-        result = subprocess.run(
-            ["claude", "-p", combined_prompt],
-            capture_output=True,
-            text=True,
-            check=True,
-            timeout=120,
+        message = _client.messages.create(
+            model="claude-sonnet-4-6",
+            max_tokens=1024,
+            system=FACT_CHECKER_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_message}],
         )
-        full_response = result.stdout.strip()
+        full_response = message.content[0].text.strip()
     except Exception as exc:
         return {
             "corrected_text": op_ed_text,

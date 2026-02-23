@@ -1,13 +1,12 @@
 """
 debate_engine.py — Orchestrates op-ed generation and multi-round debates.
-
-Uses the Claude Code CLI (`claude -p`) instead of the Anthropic SDK,
-so no API key is required — only a Claude Code subscription.
 """
 
-import subprocess
+import anthropic
 
 from personas import ALL_PERSONAS, PERSONAS_BY_ID, MODERATOR_SYSTEM_PROMPT  # noqa: F401
+
+_client = anthropic.Anthropic()
 
 _DEBATE_SUFFIX = (
     "\n\nYou are now in a live debate. You have read the other contributors' pieces and responses. "
@@ -18,16 +17,14 @@ _DEBATE_SUFFIX = (
 
 
 def _call_claude(system_prompt: str, user_message: str) -> str:
-    """Call Claude via the Claude Code CLI using the current subscription."""
-    combined_prompt = f"{system_prompt}\n\n{user_message}"
-    result = subprocess.run(
-        ["claude", "-p", combined_prompt],
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=120,
+    """Call Claude via the Anthropic Python SDK."""
+    message = _client.messages.create(
+        model="claude-sonnet-4-6",
+        max_tokens=1024,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_message}],
     )
-    return result.stdout.strip()
+    return message.content[0].text.strip()
 
 
 def generate_op_ed(persona: dict, topic: str) -> str:
