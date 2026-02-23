@@ -6,8 +6,6 @@ import anthropic
 
 from personas import ALL_PERSONAS, PERSONAS_BY_ID, MODERATOR_SYSTEM_PROMPT  # noqa: F401
 
-_client = anthropic.Anthropic()
-
 _DEBATE_SUFFIX = (
     "\n\nYou are now in a live debate. You have read the other contributors' pieces and responses. "
     "Write a response of 100-120 words. Address at least one other contributor by name. "
@@ -16,15 +14,15 @@ _DEBATE_SUFFIX = (
 )
 
 
-def _call_claude(system_prompt: str, user_message: str) -> str:
-    """Call Claude via the Anthropic Python SDK."""
-    message = _client.messages.create(
-        model="claude-sonnet-4-6",
-        max_tokens=1024,
+def call_claude(system_prompt: str, user_message: str, max_tokens: int = 600) -> str:
+    client = anthropic.Anthropic()  # uses Claude Code's stored OAuth credentials automatically
+    response = client.messages.create(
+        model="claude-opus-4-5",
+        max_tokens=max_tokens,
         system=system_prompt,
-        messages=[{"role": "user", "content": user_message}],
+        messages=[{"role": "user", "content": user_message}]
     )
-    return message.content[0].text.strip()
+    return response.content[0].text
 
 
 def generate_op_ed(persona: dict, topic: str) -> str:
@@ -40,9 +38,10 @@ def generate_op_ed(persona: dict, topic: str) -> str:
     -------
     The raw text of the generated op-ed.
     """
-    return _call_claude(
-        persona["system_prompt"],
-        f"Write your op-ed on the following topic: {topic}",
+    return call_claude(
+        system_prompt=persona["system_prompt"],
+        user_message=f"Write your op-ed on the following topic: {topic}",
+        max_tokens=600,
     )
 
 
@@ -85,7 +84,7 @@ def generate_debate_response(
 
     system_prompt = persona["system_prompt"] + _DEBATE_SUFFIX
 
-    return _call_claude(system_prompt, user_message)
+    return call_claude(system_prompt, user_message)
 
 
 def generate_moderator_summary(
@@ -115,4 +114,4 @@ def generate_moderator_summary(
         "Please provide your moderator synthesis."
     )
 
-    return _call_claude(MODERATOR_SYSTEM_PROMPT, user_message)
+    return call_claude(MODERATOR_SYSTEM_PROMPT, user_message)

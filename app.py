@@ -5,6 +5,7 @@ Replaces the CLI (france_debate.py). Imports from existing backend modules
 without modifying them.
 """
 
+import anthropic
 from datetime import datetime
 
 import streamlit as st
@@ -23,6 +24,12 @@ st.set_page_config(
     layout="wide",
     initial_sidebar_state="expanded",
 )
+
+try:
+    anthropic.Anthropic().models.list()
+except Exception:
+    st.error("Could not authenticate with Anthropic. Make sure Claude Code is installed and you are logged in. Run `claude` in your terminal to verify.")
+    st.stop()
 
 # ---------------------------------------------------------------------------
 # Custom CSS
