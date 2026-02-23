@@ -6,6 +6,8 @@ import anthropic
 
 from personas import FACT_CHECKER_SYSTEM_PROMPT
 
+MODEL = "claude-haiku-4-5-20251001"
+
 
 def fact_check(op_ed_text: str, persona_name: str) -> dict:
     """
@@ -29,7 +31,7 @@ def fact_check(op_ed_text: str, persona_name: str) -> dict:
     try:
         client = anthropic.Anthropic()
         response = client.messages.create(
-            model="claude-opus-4-5",
+            model=MODEL,
             max_tokens=1024,
             system=FACT_CHECKER_SYSTEM_PROMPT,
             messages=[{"role": "user", "content": user_message}],
