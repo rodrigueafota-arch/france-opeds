@@ -14,13 +14,14 @@ _DEBATE_SUFFIX = (
 )
 
 
-def call_claude(system_prompt: str, user_message: str, max_tokens: int = 600) -> str:
-    client = anthropic.Anthropic()  # uses Claude Code's stored OAuth credentials automatically
+def _call_claude(system_prompt: str, user_message: str, max_tokens: int = 600) -> str:
+    """Call Claude via the Anthropic Python SDK."""
+    client = anthropic.Anthropic()
     response = client.messages.create(
         model="claude-opus-4-5",
         max_tokens=max_tokens,
         system=system_prompt,
-        messages=[{"role": "user", "content": user_message}]
+        messages=[{"role": "user", "content": user_message}],
     )
     return response.content[0].text
 
@@ -38,10 +39,9 @@ def generate_op_ed(persona: dict, topic: str) -> str:
     -------
     The raw text of the generated op-ed.
     """
-    return call_claude(
-        system_prompt=persona["system_prompt"],
-        user_message=f"Write your op-ed on the following topic: {topic}",
-        max_tokens=600,
+    return _call_claude(
+        persona["system_prompt"],
+        f"Write your op-ed on the following topic: {topic}",
     )
 
 
@@ -84,7 +84,7 @@ def generate_debate_response(
 
     system_prompt = persona["system_prompt"] + _DEBATE_SUFFIX
 
-    return call_claude(system_prompt, user_message)
+    return _call_claude(system_prompt, user_message)
 
 
 def generate_moderator_summary(
@@ -114,4 +114,4 @@ def generate_moderator_summary(
         "Please provide your moderator synthesis."
     )
 
-    return call_claude(MODERATOR_SYSTEM_PROMPT, user_message)
+    return _call_claude(MODERATOR_SYSTEM_PROMPT, user_message)

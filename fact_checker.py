@@ -2,7 +2,8 @@
 fact_checker.py — Fact-checking logic using the Anthropic Python SDK.
 """
 
-from debate_engine import call_claude
+import anthropic
+
 from personas import FACT_CHECKER_SYSTEM_PROMPT
 
 
@@ -21,17 +22,35 @@ def fact_check(op_ed_text: str, persona_name: str) -> dict:
       "corrected_text"   — revised op-ed, or original if nothing changed
       "fact_check_notes" — bulleted notes from the model (empty string if none)
     """
+    user_message = (
+        f"Please fact-check the following op-ed by {persona_name}:\n\n{op_ed_text}"
+    )
+
     try:
-        response = call_claude(
-            system_prompt=FACT_CHECKER_SYSTEM_PROMPT,
-            user_message=f"Please fact-check the following op-ed by {persona_name}:\n\n{op_ed_text}",
+        client = anthropic.Anthropic()
+        response = client.messages.create(
+            model="claude-opus-4-5",
+            max_tokens=1024,
+            system=FACT_CHECKER_SYSTEM_PROMPT,
+            messages=[{"role": "user", "content": user_message}],
         )
-        if "Fact-check notes" in response:
-            parts = response.split("Fact-check notes", 1)
-            return {
-                "corrected_text": parts[0].strip(),
-                "fact_check_notes": parts[1].strip(),
-            }
-        return {"corrected_text": response, "fact_check_notes": ""}
+        full_response = response.content[0].text.strip()
     except Exception as exc:
-        return {"corrected_text": op_ed_text, "fact_check_notes": f"Fact-checking failed: {exc}"}
+        return {
+            "corrected_text": op_ed_text,
+            "fact_check_notes": f"Fact-checking failed: {exc}",
+        }
+
+    # Split on "Fact-check notes" heading if present
+    if "Fact-check notes" in full_response:
+        parts = full_response.split("Fact-check notes", maxsplit=1)
+        corrected_text = parts[0].strip()
+        fact_check_notes = parts[1].strip().lstrip(":").strip()
+    else:
+        corrected_text = full_response.strip()
+        fact_check_notes = ""
+
+    return {
+        "corrected_text": corrected_text,
+        "fact_check_notes": fact_check_notes,
+    }
