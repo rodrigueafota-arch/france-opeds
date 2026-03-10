@@ -1,13 +1,12 @@
 """
 debate_engine.py — Orchestrates op-ed generation and multi-round debates.
-
-Uses the Claude Code CLI (`claude -p`) instead of the Anthropic SDK,
-so no API key is required — only a Claude Code subscription.
 """
 
-import subprocess
+import anthropic
 
 from personas import ALL_PERSONAS, PERSONAS_BY_ID, MODERATOR_SYSTEM_PROMPT  # noqa: F401
+
+MODEL = "claude-sonnet-4-5"
 
 _DEBATE_SUFFIX = (
     "\n\nYou are now in a live debate. You have read the other contributors' pieces and responses. "
@@ -15,19 +14,6 @@ _DEBATE_SUFFIX = (
     "Be direct. You may agree partially, disagree sharply, or reframe the debate entirely. "
     "Stay in character."
 )
-
-
-def _call_claude(system_prompt: str, user_message: str) -> str:
-    """Call Claude via the Claude Code CLI using the current subscription."""
-    combined_prompt = f"{system_prompt}\n\n{user_message}"
-    result = subprocess.run(
-        ["claude", "-p", combined_prompt],
-        capture_output=True,
-        text=True,
-        check=True,
-        timeout=120,
-    )
-    return result.stdout.strip()
 
 
 def generate_op_ed(persona: dict, topic: str) -> str:
@@ -43,10 +29,14 @@ def generate_op_ed(persona: dict, topic: str) -> str:
     -------
     The raw text of the generated op-ed.
     """
-    return _call_claude(
-        persona["system_prompt"],
-        f"Write your op-ed on the following topic: {topic}",
+    client = anthropic.Anthropic()
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=600,
+        system=persona["system_prompt"],
+        messages=[{"role": "user", "content": f"Write your op-ed on the following topic: {topic}"}],
     )
+    return response.content[0].text
 
 
 def generate_debate_response(
@@ -88,7 +78,14 @@ def generate_debate_response(
 
     system_prompt = persona["system_prompt"] + _DEBATE_SUFFIX
 
-    return _call_claude(system_prompt, user_message)
+    client = anthropic.Anthropic()
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=300,
+        system=system_prompt,
+        messages=[{"role": "user", "content": user_message}],
+    )
+    return response.content[0].text
 
 
 def generate_moderator_summary(
@@ -118,4 +115,11 @@ def generate_moderator_summary(
         "Please provide your moderator synthesis."
     )
 
-    return _call_claude(MODERATOR_SYSTEM_PROMPT, user_message)
+    client = anthropic.Anthropic()
+    response = client.messages.create(
+        model=MODEL,
+        max_tokens=200,
+        system=MODERATOR_SYSTEM_PROMPT,
+        messages=[{"role": "user", "content": user_message}],
+    )
+    return response.content[0].text
